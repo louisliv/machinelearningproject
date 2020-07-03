@@ -1,2 +1,6 @@
 *.7z
 *.zip
+.vscode/*
+__pycache__/*
+base/*
+*.html
