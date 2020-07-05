@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from matplotlib import pyplot as plt
 
 from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import StratifiedKFold
@@ -27,6 +28,7 @@ from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from keras.models import Sequential
 from keras.layers import Dense, Embedding, LSTM
+from keras.utils import plot_model
 from keras.utils.np_utils import to_categorical
 from keras.callbacks import ModelCheckpoint
 from keras.models import load_model
@@ -68,6 +70,9 @@ def main():
         'w2vmodel'
     )
 
+    mean_embedding_vectorizer = MeanEmbeddingVectorizer(w2vec)
+    mean_embedded = mean_embedding_vectorizer.fit_transform(df_train['Text'])
+
     evaluate_features(
         mean_embedded, 
         df_train['Class'].values.ravel(),
@@ -101,6 +106,29 @@ def main():
     model.compile(loss = 'categorical_crossentropy', optimizer='adam', 
         metrics = ['categorical_crossentropy'])
     print(model.summary())
+
+    Y = pd.get_dummies(df_train['Class']).values
+    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, 
+        test_size = 0.2, random_state = 42, stratify=Y)
+
+    batch_size = 32
+    model.fit(X_train, Y_train, epochs=8, batch_size=batch_size, 
+        validation_split=0.2, callbacks=[ckpt_callback])
+
+    model = load_model('keras_model')
+
+    probas = model.predict(X_test)
+
+    pred_indices = np.argmax(probas, axis=1)
+    classes = np.array(range(1, 10))
+    preds = classes[pred_indices]
+    print('Log loss: {}'.format(log_loss(classes[np.argmax(Y_test, axis=1)], probas)))
+    print('Accuracy: {}'.format(accuracy_score(classes[np.argmax(Y_test, axis=1)], preds)))
+    skplt.plot_confusion_matrix(classes[np.argmax(Y_test, axis=1)], preds)
+
+    # plt.savefig("mygraph.png")
+    # plt.show()
+    plot_model(model, to_file='model.png', show_shapes=True)
 
 if __name__ == "__main__":
     main()
